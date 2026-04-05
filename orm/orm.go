@@ -44,6 +44,7 @@ func (s *MsSession) Count() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer stmt.Close()
 	var result int64
 	row := stmt.QueryRow()
 	err = row.Err()
@@ -87,10 +88,12 @@ func (s *MsSession) QueryRow(sql string, data any, queryValues ...any) error {
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 	rows, err := stmt.Query(queryValues...)
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 	columns, err := rows.Columns()
 	if err != nil {
 		return err
@@ -138,7 +141,8 @@ func (s *MsSession) Exec(sql string, values ...any) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	r, err := stmt.Exec(values)
+	defer stmt.Close()
+	r, err := stmt.Exec(values...)
 	if err != nil {
 		return 0, err
 	}
@@ -203,6 +207,7 @@ func (s *MsSession) Update(data ...any) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
+	defer stmt.Close()
 	s.updateValues = append(s.updateValues, s.values...)
 	r, err := stmt.Exec(s.updateValues...)
 	if err != nil {
@@ -223,6 +228,7 @@ func (s *MsSession) Insert(data any) (int64, int64, error) {
 	if err != nil {
 		s.db.logger.Error(err)
 		return -1, -1, err
+	defer stmt.Close()
 	}
 	r, err := stmt.Exec(s.values...)
 	if err != nil {
@@ -299,6 +305,7 @@ func (s *MsSession) InsertBath(data []any) (int64, int64, error) {
 	if err != nil {
 		s.db.logger.Error(err)
 		return -1, -1, err
+	defer stmt.Close()
 	}
 
 	r, err := stmt.Exec(s.values...)
@@ -391,10 +398,12 @@ func (s *MsSession) Select(data any, fields ...string) ([]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer stmt.Close()
 	rows, err := stmt.Query(s.values...)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, err
@@ -451,10 +460,11 @@ func (s *MsSession) Delete() error {
 	var sb strings.Builder
 	sb.WriteString(query)
 	sb.WriteString(s.whereParam.String())
-	stmt, err := s.db.db.Prepare(query)
+	stmt, err := s.db.db.Prepare(sb.String())
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 	_, err = stmt.Exec(s.values...)
 	if err != nil {
 		return err
@@ -484,9 +494,7 @@ func Name(name string) string {
 			lastIndex = index
 		}
 	}
-	if lastIndex != len(name)-1 {
-		sb.WriteString(name[lastIndex:])
-	}
+	sb.WriteString(name[lastIndex:])
 	return sb.String()
 }
 
@@ -528,7 +536,6 @@ func Open(driverName string, source string) (*MsDb, error) {
 	if err != nil {
 		panic(err)
 	}
-	db.SetMaxOpenConns(1)
 	msDb := &MsDb{
 		db: db,
 	}

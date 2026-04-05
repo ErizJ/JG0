@@ -41,7 +41,9 @@ func (e *Engine) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 					serviceName, err := e.register.GetService(gwConfig.ServiceName)
 					e.Logger.Info("注册中心结果")
 					if err != nil {
-
+						e.Logger.Error(err)
+						writer.WriteHeader(http.StatusBadGateway)
+						return
 					}
 					rawURL = fmt.Sprintf("http://%s", serviceName)
 				}
@@ -111,8 +113,7 @@ func (e *Engine) Run(addr string, file ...string) {
 	if len(file) == 2 {
 		err = http.ListenAndServeTLS(addr, file[0], file[1], e)
 	} else {
-		http.Handle("/", e)
-		err = http.ListenAndServe(addr, nil)
+		err = http.ListenAndServe(addr, e)
 	}
 
 	if err != nil {

@@ -30,5 +30,7 @@ func (e *MsError) Result(fuc ErrorFuc) {
 }
 
 func (e *MsError) ExecResult() {
-	e.errorFuc(e)
+	if e.errorFuc != nil {
+		e.errorFuc(e)
+	}
 }

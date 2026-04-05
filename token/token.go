@@ -112,7 +112,7 @@ func (j *JwtHandler) usingPublicKeyAlgo() bool {
 
 func (j *JwtHandler) refreshToken(token *jwt.Token) (string, error) {
 	claims := token.Claims.(jwt.MapClaims)
-	expire := j.TimeFun().Add(j.Timeout)
+	expire := j.TimeFun().Add(j.RefreshTimeout)
 	claims["exp"] = expire.Unix()
 	var tokenStr string
 	var tokenErr error
@@ -197,34 +197,42 @@ func (j *JwtHandler) AuthInterceptor(next msgo.HandlerFunc) msgo.HandlerFunc {
 		token := ctx.R.Header.Get(j.Header)
 		if token == "" {
 			if j.SendCookie {
-				token, err := ctx.GetCookie(j.CookieName)
+				cookieToken, err := ctx.GetCookie(j.CookieName)
 				if err != nil {
 					if j.AuthHandler == nil {
 						ctx.W.WriteHeader(http.StatusUnauthorized)
 					} else {
-						j.AuthHandler(ctx, nil)
+						j.AuthHandler(ctx, err)
 					}
 					return
-				} else {
-					//解析token
-					t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-						if j.usingPublicKeyAlgo() {
-							return j.PrivateKey, nil
-						} else {
-							return j.Key, nil
-						}
-					})
-					if err != nil {
-						if j.AuthHandler == nil {
-							ctx.W.WriteHeader(http.StatusUnauthorized)
-						} else {
-							j.AuthHandler(ctx, nil)
-						}
-					}
-					ctx.Set("claims", t.Claims.(jwt.MapClaims))
 				}
+				token = cookieToken
+			} else {
+				if j.AuthHandler == nil {
+					ctx.W.WriteHeader(http.StatusUnauthorized)
+				} else {
+					j.AuthHandler(ctx, errors.New("token is empty"))
+				}
+				return
 			}
 		}
+		//解析token
+		t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+			if j.usingPublicKeyAlgo() {
+				return j.PrivateKey, nil
+			} else {
+				return j.Key, nil
+			}
+		})
+		if err != nil {
+			if j.AuthHandler == nil {
+				ctx.W.WriteHeader(http.StatusUnauthorized)
+			} else {
+				j.AuthHandler(ctx, err)
+			}
+			return
+		}
+		ctx.Set("claims", t.Claims.(jwt.MapClaims))
 		next(ctx)
 	}
 }

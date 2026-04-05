@@ -13,7 +13,7 @@ func Recovery(next HandlerFunc) HandlerFunc {
 	return func(ctx *Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				if e := err.(error); e != nil {
+				if e, ok := err.(error); ok && e != nil {
 					var msError *mserror.MsError
 					if errors.As(e, &msError) {
 						msError.ExecResult()

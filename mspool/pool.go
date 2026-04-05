@@ -246,5 +246,5 @@ func (p *Pool) Running() int {
 }
 
 func (p *Pool) Free() int {
-	return int(p.cap - p.running)
+	return int(atomic.LoadInt32(&p.cap) - atomic.LoadInt32(&p.running))
 }

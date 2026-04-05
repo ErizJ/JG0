@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -83,29 +82,11 @@ func (c *MsHttpClient) handleResponse(request *http.Request) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		return nil, errors.New(fmt.Sprintf("response status is %d", response.StatusCode))
 	}
-	reader := bufio.NewReader(response.Body)
-	buffLen := 79
-	buff := make([]byte, buffLen)
-	body := make([]byte, 0)
-	for {
-		n, err := reader.Read(buff)
-		if err == io.EOF || n == 0 {
-			break
-		}
-		body = append(body, buff[:n]...)
-		if n < buffLen {
-			break
-		}
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
-	}(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -183,6 +164,9 @@ func (c *MsHttpClient) Do(service string, method string) MsService {
 		panic(errors.New("msrpc tag not exist"))
 	}
 	split := strings.Split(requestPath, ",")
+	if len(split) < 2 {
+		panic(errors.New("msrpc tag format error, expect: METHOD,/path"))
+	}
 	mt := split[0]
 	path := split[1]
 	co := msService.Env()

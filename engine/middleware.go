@@ -61,13 +61,9 @@ func Limiter(next HandlerFunc) HandlerFunc {
 
 func Recovery(next HandlerFunc) HandlerFunc {
 	return func(ctx *Context) {
-		ctx.Logger.Info("load recovery")
 		defer func() {
 			if err := recover(); err != nil {
-				ctx.Logger.Error(err)
-				ctx.Logger.Error(err.(error))
-				return
-				if e := err.(error); e != nil {
+				if e, ok := err.(error); ok {
 					var msError *mserror.MsError
 					if errors.As(e, &msError) {
 						msError.ExecResult()

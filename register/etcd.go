@@ -2,6 +2,7 @@ package register
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	client3 "go.etcd.io/etcd/client/v3"
 	"time"
@@ -25,8 +26,8 @@ func EtcdRegisterService(option Option) error {
 	}
 	defer cli.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_, err = cli.Put(ctx, option.ServiceName, fmt.Sprintf("%s:%d", option.Host, option.Port))
 	defer cancel()
+	_, err = cli.Put(ctx, option.ServiceName, fmt.Sprintf("%s:%d", option.Host, option.Port))
 	return err
 }
 
@@ -40,8 +41,13 @@ func GetEtcdValue(option Option) (string, error) {
 	}
 	defer cli.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	v, err := cli.Get(ctx, option.ServiceName)
 	defer cancel()
-	kvs := v.Kvs
-	return string(kvs[0].Value), err
+	v, err := cli.Get(ctx, option.ServiceName)
+	if err != nil {
+		return "", err
+	}
+	if len(v.Kvs) == 0 {
+		return "", errors.New("key not found: " + option.ServiceName)
+	}
+	return string(v.Kvs[0].Value), nil
 }

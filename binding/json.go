@@ -20,10 +20,10 @@ func (j *jsonBinding) Name() string {
 }
 
 func (j *jsonBinding) Bind(r *http.Request, data any) error {
-	body := r.Body
-	if r == nil || body == nil {
+	if r == nil || r.Body == nil {
 		return errors.New("invalid json request")
 	}
+	body := r.Body
 	decoder := json.NewDecoder(body)
 	if j.DisallowUnknownFields {
 		decoder.DisallowUnknownFields()
@@ -92,7 +92,10 @@ func checkSliceParam(elem reflect.Type, data any, decoder *json.Decoder) error {
 		}
 
 	}
-	b, _ := json.Marshal(mapVal)
+	b, err := json.Marshal(mapVal)
+	if err != nil {
+		return err
+	}
 	return json.Unmarshal(b, data)
 }
 
@@ -115,6 +118,9 @@ func checkParam(value reflect.Value, data any, decoder *json.Decoder) error {
 			return errors.New(fmt.Sprintf("field [%s] is not exist", jsonName))
 		}
 	}
-	b, _ := json.Marshal(mapVal)
+	b, err := json.Marshal(mapVal)
+	if err != nil {
+		return err
+	}
 	return json.Unmarshal(b, data)
 }

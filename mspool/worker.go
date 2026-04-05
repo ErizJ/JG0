@@ -19,9 +19,6 @@ func (w *Worker) Run() {
 
 func (w *Worker) running() {
 	defer func() {
-		w.pool.decrRunning()
-		w.pool.workerCache.Put(w)
-		w.pool.cond.Signal()
 		if err := recover(); err != nil {
 			if w.pool.PanicHandler != nil {
 				w.pool.PanicHandler()
@@ -29,10 +26,12 @@ func (w *Worker) running() {
 				mslog.Default().Error(err)
 			}
 		}
+		w.pool.decrRunning()
+		w.pool.workerCache.Put(w)
+		w.pool.cond.Signal()
 	}()
 	for f := range w.task {
 		if f == nil {
-			w.pool.workerCache.Put(w)
 			return
 		}
 		f()

@@ -116,8 +116,7 @@ type MsTcpConn struct {
 }
 
 func (c *MsTcpConn) writeHandle() {
-	ctx := context.Background()
-	_, cancel := context.WithTimeout(ctx, time.Duration(3)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(3)*time.Second)
 	defer cancel()
 	select {
 	case rsp := <-c.rspChan:
@@ -212,10 +211,10 @@ func (s *MsTcpServer) Run() {
 }
 
 func (s *MsTcpServer) readHandle(msConn *MsTcpConn) {
+	defer msConn.conn.Close()
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
-			msConn.conn.Close()
 		}
 	}()
 	msg := s.decodeFrame(msConn.conn)
@@ -260,9 +259,10 @@ func (s *MsTcpServer) readHandle(msConn *MsTcpConn) {
 		if err != nil {
 			rsp.Code = 500
 			rsp.Msg = err.Error()
+		} else {
+			rsp.Code = 200
+			rsp.Data = resArgs[0]
 		}
-		rsp.Code = 200
-		rsp.Data = resArgs[0]
 		msConn.rspChan <- rsp
 		log.Println("接收数据成功")
 		return
@@ -403,10 +403,10 @@ func unCompress(body []byte, compressType CompressType) ([]byte, error) {
 		//return body, nil
 		//gzip
 		reader, err := gzip.NewReader(bytes.NewReader(body))
-		defer reader.Close()
 		if err != nil {
 			return nil, err
 		}
+		defer reader.Close()
 		buf := new(bytes.Buffer)
 		// 从 Reader 中读取出数据
 		if _, err := buf.ReadFrom(reader); err != nil {

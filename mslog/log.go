@@ -150,8 +150,8 @@ func (l *Logger) SetLogPath(s string) {
 
 func (l *Logger) CheckFileSize(w *LoggerWriter) {
 	//判断对应文件大小
-	file := w.out.(*os.File)
-	if file != nil {
+	file, ok := w.out.(*os.File)
+	if ok && file != nil {
 		stat, err := file.Stat()
 		if err != nil {
 			return
@@ -188,6 +188,9 @@ func DefaultJson() *Logger {
 }
 
 func FileWriter(filename string) io.Writer {
-	file, _ := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(fmt.Sprintf("failed to open log file %s: %v", filename, err))
+	}
 	return file
 }
