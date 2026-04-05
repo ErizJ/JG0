@@ -16,8 +16,7 @@ func (x *xmlBinding) Name() string {
 }
 
 func (x *xmlBinding) Bind(r *http.Request, data any) error {
-	body := r.Body
-	if r == nil || body == nil {
+	if r == nil || r.Body == nil {
 		return errors.New("invalid xml request")
 	}
 	decoder := xml.NewDecoder(r.Body)

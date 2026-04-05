@@ -111,15 +111,21 @@ func (j *JwtHandler) usingPublicKeyAlgo() bool {
 }
 
 func (j *JwtHandler) refreshToken(token *jwt.Token) (string, error) {
-	claims := token.Claims.(jwt.MapClaims)
+	// 复制一份 claims，避免修改原 token 的 claims
+	origClaims := token.Claims.(jwt.MapClaims)
+	claims := make(jwt.MapClaims)
+	for k, v := range origClaims {
+		claims[k] = v
+	}
 	expire := j.TimeFun().Add(j.RefreshTimeout)
 	claims["exp"] = expire.Unix()
+	refreshToken := jwt.NewWithClaims(token.Method, claims)
 	var tokenStr string
 	var tokenErr error
 	if j.usingPublicKeyAlgo() {
-		tokenStr, tokenErr = token.SignedString(j.PrivateKey)
+		tokenStr, tokenErr = refreshToken.SignedString(j.PrivateKey)
 	} else {
-		tokenStr, tokenErr = token.SignedString(j.Key)
+		tokenStr, tokenErr = refreshToken.SignedString(j.Key)
 	}
 	if tokenErr != nil {
 		return "", tokenErr

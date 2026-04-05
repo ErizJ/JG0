@@ -127,6 +127,7 @@ func New() *Engine {
 	engine := &Engine{
 		router: router{},
 	}
+	engine.router.engine = engine
 	engine.pool.New = func() any {
 		return engine.allocateContext()
 	}
@@ -138,7 +139,9 @@ func Default() *Engine {
 	engine.Logger = mslog.Default()
 	logPath, ok := config.Conf.Log["path"]
 	if ok {
-		engine.Logger.SetLogPath(logPath.(string))
+		if s, ok := logPath.(string); ok {
+			engine.Logger.SetLogPath(s)
+		}
 	}
 	engine.Use(Logging, Recovery)
 	engine.router.engine = engine
@@ -168,6 +171,11 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx.W = w
 	ctx.R = r
 	ctx.Logger = e.Logger
+	ctx.Keys = nil
+	ctx.queryCache = nil
+	ctx.StatusCode = 0
+	ctx.NodeRouterName = ""
+	ctx.RequestMethod = ""
 	e.httpRequestHandle(ctx)
 	e.pool.Put(ctx)
 }

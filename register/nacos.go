@@ -31,7 +31,9 @@ func MsNacosDefault() *MsNacos {
 			constant.WithContextPath("/nacos"),
 		),
 	}
-	nacos.CreateClient(options)
+	if err := nacos.CreateClient(options); err != nil {
+		panic(err)
+	}
 	return nacos
 }
 

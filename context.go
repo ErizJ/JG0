@@ -2,13 +2,13 @@ package msgo
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ErizJ/JG0/binding"
 	msLog "github.com/ErizJ/JG0/mslog"
 	"github.com/ErizJ/JG0/render"
 	"github.com/ErizJ/JG0/validator"
 	"html/template"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -111,13 +111,11 @@ func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dstName string) e
 // FormFile 获取文件
 func (c *Context) FormFile(key string) (*multipart.FileHeader, error) {
 	file, header, err := c.R.FormFile(key)
-	defer func(file multipart.File) {
-		err := file.Close()
-		if err != nil {
-
-		}
-	}(file)
-	return header, err
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return header, nil
 }
 
 func (c *Context) FormFiles(key string) []*multipart.FileHeader {
@@ -197,14 +195,13 @@ func (c *Context) GetQueryArray(key string) (values []string, ok bool) {
 }
 
 func (c *Context) initQueryCache() {
-	//if c.queryCache == nil {
-	if c.R != nil {
-		c.queryCache = c.R.URL.Query()
-	} else {
-		c.queryCache = url.Values{}
+	if c.queryCache == nil {
+		if c.R != nil {
+			c.queryCache = c.R.URL.Query()
+		} else {
+			c.queryCache = url.Values{}
+		}
 	}
-	//}
-	log.Println(c.queryCache)
 }
 
 func (c *Context) HTMLTemplate(name string, data any, files ...string) error {
@@ -254,12 +251,10 @@ func (c *Context) XML(status int, data any) error {
 
 // String 字符串
 func (c *Context) String(status int, format string, values ...any) error {
-	c.W.WriteHeader(status)
-	err := c.Render(&render.String{
+	return c.Render(&render.String{
 		Format: format,
 		Values: values,
 	}, status)
-	return err
 }
 
 // Redirect 重定向
@@ -305,11 +300,15 @@ func (c *Context) Render(r render.Render, statusCode int) error {
 }
 
 func (c *Context) Fail(code int, msg any) {
-	_ = c.String(code, msg.(string))
+	_ = c.String(code, fmt.Sprintf("%v", msg))
 }
 
 func (c *Context) HandleWithError(statusCode int, obj any, err error) {
 	if err != nil {
+		if c.engine.errorHandler == nil {
+			_ = c.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
 		code, data := c.engine.errorHandler(err)
 		err = c.JSON(code, data)
 	} else {
@@ -342,5 +341,9 @@ func (c *Context) GetCookie(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return cookie.String(), nil
+	val, err := url.QueryUnescape(cookie.Value)
+	if err != nil {
+		return cookie.Value, nil
+	}
+	return val, nil
 }

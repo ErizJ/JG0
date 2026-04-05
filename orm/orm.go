@@ -228,8 +228,8 @@ func (s *MsSession) Insert(data any) (int64, int64, error) {
 	if err != nil {
 		s.db.logger.Error(err)
 		return -1, -1, err
-	defer stmt.Close()
 	}
+	defer stmt.Close()
 	r, err := stmt.Exec(s.values...)
 	if err != nil {
 		s.db.logger.Error(err)
@@ -293,7 +293,7 @@ func (s *MsSession) fieldNames(data any) {
 	s.values = values
 }
 
-func (s *MsSession) InsertBath(data []any) (int64, int64, error) {
+func (s *MsSession) InsertBatch(data []any) (int64, int64, error) {
 	if len(data) == 0 {
 		panic(errors.New("data type must be slice and not empty"))
 	}
@@ -305,8 +305,8 @@ func (s *MsSession) InsertBath(data []any) (int64, int64, error) {
 	if err != nil {
 		s.db.logger.Error(err)
 		return -1, -1, err
-	defer stmt.Close()
 	}
+	defer stmt.Close()
 
 	r, err := stmt.Exec(s.values...)
 	if err != nil {
@@ -534,7 +534,7 @@ func (d *MsDb) New() *MsSession {
 func Open(driverName string, source string) (*MsDb, error) {
 	db, err := sql.Open(driverName, source)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	msDb := &MsDb{
 		db: db,
@@ -547,9 +547,8 @@ func Open(driverName string, source string) (*MsDb, error) {
 	db.SetConnMaxLifetime(time.Minute * 3)
 	//空闲连接最大存活时间
 	db.SetConnMaxIdleTime(time.Minute * 1)
-	err = db.Ping()
-	if err != nil {
-		panic(err)
+	if err = db.Ping(); err != nil {
+		return nil, err
 	}
 	return msDb, nil
 }
@@ -565,6 +564,9 @@ func (s *MsSession) Begin() error {
 }
 
 func (s *MsSession) Commit() error {
+	if s.tx == nil || !s.beginTx {
+		return errors.New("no active transaction")
+	}
 	err := s.tx.Commit()
 	if err != nil {
 		return err
@@ -574,6 +576,9 @@ func (s *MsSession) Commit() error {
 }
 
 func (s *MsSession) Rollback() error {
+	if s.tx == nil || !s.beginTx {
+		return errors.New("no active transaction")
+	}
 	err := s.tx.Rollback()
 	if err != nil {
 		return err

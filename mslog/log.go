@@ -162,7 +162,11 @@ func (l *Logger) CheckFileSize(w *LoggerWriter) {
 		}
 		if size >= l.LogFilesize {
 			_, name := path.Split(stat.Name())
-			fileName := name[0:strings.Index(name, ".")]
+			idx := strings.Index(name, ".")
+			if idx < 0 {
+				idx = len(name)
+			}
+			fileName := name[0:idx]
 			writer := FileWriter(path.Join(l.LogPath, msstrings.JoinStrings(fileName, ".", time.Now().Unix(), ".mslog")))
 			w.out = writer
 		}

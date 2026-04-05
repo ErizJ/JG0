@@ -22,7 +22,7 @@ func (j *JsonFormatter) Format(params *LoggerFormatParams) string {
 	}
 	marshal, err := json.Marshal(fields)
 	if err != nil {
-		panic(err)
+		return fmt.Sprintf(`{"level":"%s","error":"json marshal failed: %v"}`+"\n", params.Level.Level(), err)
 	}
 	if params.IsColor {
 		levelColor := params.Level.LevelColor()
